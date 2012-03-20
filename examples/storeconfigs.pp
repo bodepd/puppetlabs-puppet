@@ -14,6 +14,13 @@ package { 'activerecord':
   ensure   => '2.3.5',
   provider => 'gem',
 }
+
+if($operatingsystem == 'Ubuntu') {
+  $master_package = 'puppetmaster-passenger'
+} else {
+  $master_package = 'puppet'
+}
+
 class { 'puppet::master':
   storeconfigs            => true,
   storeconfigs_dbuser     => 'dan',
@@ -22,7 +29,8 @@ class { 'puppet::master':
   storeconfigs_dbserver   => 'localhost',
   storeconfigs_dbsocket   => '/var/run/mysqld/mysqld.sock',
   version                 => installed,
-  puppet_master_package   => 'puppet',
+  puppet_master_package   => $master_package,
+  puppet_master_service   => 'apache2',
   autosign                => 'true',
   certname                => $clientcert,
 }

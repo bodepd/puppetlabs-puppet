@@ -155,22 +155,31 @@ class puppet::master (
   } else {
 
     $service_require = Package[$puppet_master_package]
-    $service_notify = Exec['puppet_master_start']
 
-    Concat::Fragment['puppet.conf-master'] -> Exec['puppet_master_start']
+    if $puppet_master_service {
+      $service_notify = Service[$puppet_master_service]
+      service { $puppet_master_service:
+        ensure => running,
+        enable => true
+      }
+      Concat::Fragment['puppet.conf-master'] -> Service[$puppet_master_service]
+    } else {
+      $service_notify = Exec['puppet_master_start']
+      exec { 'puppet_master_start':
+        command   => '/usr/bin/nohup puppet master &',
+        refresh   => '/usr/bin/pkill puppet && /usr/bin/nohup puppet master &',
+        unless    => "/bin/ps -ef | grep -v grep | /bin/grep 'puppet master'",
+        require   => File['/etc/puppet/puppet.conf'],
+        subscribe => Package[$puppet_master_package],
+      }
+      Concat::Fragment['puppet.conf-master'] -> Exec['puppet_master_start']
+    }
+
 
     concat::fragment { 'puppet.conf-master':
       order   => '05',
       target  => "/etc/puppet/puppet.conf",
       content => template("puppet/puppet.conf-master.erb"),
-    }
-
-    exec { 'puppet_master_start':
-      command   => '/usr/bin/nohup puppet master &',
-      refresh   => '/usr/bin/pkill puppet && /usr/bin/nohup puppet master &',
-      unless    => "/bin/ps -ef | grep -v grep | /bin/grep 'puppet master'",
-      require   => File['/etc/puppet/puppet.conf'],
-      subscribe => Package[$puppet_master_package],
     }
   }
 
